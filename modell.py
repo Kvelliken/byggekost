@@ -74,9 +74,10 @@ DATA = "data"
 def logg(melding: str) -> None:
     print(melding, flush=True)
 
-    # ===========================================================================
-    # 1. DATA
-    # ===========================================================================
+
+# ===========================================================================
+# 1. DATA
+# ===========================================================================
 
 
 BASIS = "https://data.ssb.no/api/pxwebapi/v2/tables"
@@ -161,9 +162,10 @@ def lagre_oyeblikksbilde(serie: pd.Series) -> None:
     ramme.to_csv(arkiv, index=False)
     logg(f"  Lagret {fil} og {arkiv}")
 
-    # ===========================================================================
-    # 2. MODELL
-    # ===========================================================================
+
+# ===========================================================================
+# 2. MODELL
+# ===========================================================================
 
 
 class Modell:
@@ -304,9 +306,10 @@ class Modell:
         y0 = float(np.log(self.full.values[-1]))
         return np.expm1((logg_bane[:, 12 * aar - 1] - y0) / aar)
 
-        # ===========================================================================
-        # 3. STATISTIKK
-        # ===========================================================================
+
+# ===========================================================================
+# 3. STATISTIKK
+# ===========================================================================
 
 
 def skjevhet(x: np.ndarray) -> float:
@@ -357,9 +360,10 @@ def oppsummer(fordelinger: dict[int, np.ndarray]) -> list[dict]:
         )
     return rader
 
-    # ===========================================================================
-    # 4. GRAFER
-    # ===========================================================================
+
+# ===========================================================================
+# 4. GRAFER
+# ===========================================================================
 
 
 def _perioder_frem(sist: pd.Period, n: int) -> pd.PeriodIndex:
@@ -578,9 +582,148 @@ def graf_tilbaketest(tb: pd.DataFrame, fil: str) -> None:
     fig.savefig(fil)
     plt.close(fig)
 
-    # ===========================================================================
-    # 5. TILBAKETEST
-    # ===========================================================================
+
+# ===========================================================================
+# 5. TILBAKETEST
+# ===========================================================================
+
+
+def tilbaketest_baner(indeks: pd.Series) -> list[dict]:
+    """Lager historiske prognoser som kan tegnes mot fasiten.
+
+    For noen få utvalgte tidspunkter i fortiden stiller vi modellen opp med
+    bind for øynene: den får bare se data til og med det tidspunktet, og lager
+    en prognose fremover. Så legger vi den faktiske utviklingen oppå.
+
+    Dette er den mest direkte måten å se om modellen er til å stole på. Den
+    krever ingen statistikk for å leses.
+    """
+    aar = C.TILBAKETEST_VIS_AAR
+    sist = indeks.index[-1]
+    tidligst = indeks.index[0] + Modell.MIN_OBS
+
+    # Nyeste startpunkt der vi rekker å se hele horisonten, så bakover
+    # med jevne mellomrom.
+    nyeste = sist - 12 * aar
+    punkter = [nyeste - 12 * aar * k for k in range(C.TILBAKETEST_VIS_ANTALL)]
+    punkter = sorted(p for p in punkter if p >= tidligst)
+
+    ut = []
+    for n, punkt in enumerate(punkter):
+        historikk = indeks[indeks.index <= punkt]
+        try:
+            m = Modell(historikk, est_fra=C.ESTIMERING_FRA)
+        except Exception:
+            continue
+
+        baner = np.exp(m.simuler(12 * aar, C.TILBAKETEST_BANER, C.TILFELDIG_FRO + 500 + n))
+        frem = pd.period_range(punkt + 1, periods=12 * aar, freq="M")
+
+        ut.append(
+            {
+                "punkt": punkt,
+                "frem": frem,
+                "median": np.percentile(baner, 50, axis=0),
+                "band": {
+                    b: np.percentile(baner, [(100 - b) / 2, 100 - (100 - b) / 2], axis=0)
+                    for b in C.BAND
+                },
+            }
+        )
+    return ut
+
+
+def graf_tilbaketest_bane(indeks: pd.Series, serier: list[dict], fil: str) -> None:
+    """Faktisk indeks mot det modellen ville sagt, med usikkerhetsvifte."""
+    if not serier:
+        return
+
+    n = len(serier)
+    kol = 2 if n > 1 else 1
+    rad = int(np.ceil(n / kol))
+    fig, akser = plt.subplots(rad, kol, figsize=(9.2, 3.3 * rad))
+    akser = np.atleast_1d(akser).ravel()
+
+    for ax, d in zip(akser, serier):
+        punkt, frem = d["punkt"], d["frem"]
+
+        # litt historikk foran, hele prognoseperioden bak
+        vis = indeks[(indeks.index >= punkt - 36) & (indeks.index <= frem[-1])]
+        x = frem.to_timestamp()
+
+        for i, b in enumerate(sorted(C.BAND, reverse=True)):
+            lo, hi = d["band"][b]
+            ax.fill_between(
+                x, lo, hi, color=FARGE["band"], alpha=0.16 + 0.14 * i, linewidth=0
+            )
+        ax.plot(x, d["median"], color=FARGE["median"], lw=1.6, label="modellens median")
+        ax.plot(
+            vis.index.to_timestamp(),
+            vis.values,
+            color=FARGE["blekk"],
+            lw=1.9,
+            label="faktisk",
+        )
+        ax.axvline(punkt.to_timestamp(), color=FARGE["svak"], lw=0.9, ls=(0, (4, 3)))
+
+        # traff den?
+        mal = frem[-1]
+        if mal in indeks.index:
+            lo80, hi80 = d["band"][80]
+            innenfor = lo80[-1] <= indeks[mal] <= hi80[-1]
+            ax.plot(
+                mal.to_timestamp(),
+                indeks[mal],
+                "o",
+                color=FARGE["flate"],
+                markeredgecolor=FARGE["blekk"] if innenfor else FARGE["anker"],
+                markersize=7,
+                markeredgewidth=1.8,
+                zorder=6,
+            )
+
+        ax.set_title(
+            f"Prognose laget {str(punkt).replace('-', 'M')}", fontsize=10.5, loc="left"
+        )
+        ax.margins(x=0.01)
+        ax.tick_params(labelsize=8.5)
+
+    akser[0].legend(frameon=False, fontsize=8.5, loc="upper left")
+    for ax in akser[n:]:
+        ax.axis("off")
+    fig.tight_layout()
+    fig.savefig(fil)
+    plt.close(fig)
+
+
+def graf_tilbaketest_feil(tb: pd.DataFrame, fil: str) -> None:
+    """Bommen over tid, så du ser om feilene klumper seg i enkeltepisoder."""
+    if tb.empty:
+        return
+    t = tb.copy()
+    t["dato"] = pd.PeriodIndex(t["startpunkt"], freq="M").to_timestamp()
+
+    aarene = sorted(t["horisont_ar"].unique())
+    fig, ax = plt.subplots(figsize=(9, 4.0))
+    ax.axhline(0, color=FARGE["blekk"], lw=0.9)
+
+    nyanser = ["#9CC0C9", "#6B9AA6", "#2E7080", "#0F4C5C"]
+    for i, a in enumerate(aarene):
+        del_ = t[t.horisont_ar == a].sort_values("dato")
+        ax.plot(
+            del_["dato"],
+            del_["feil_modell"] * 100,
+            lw=1.5,
+            color=nyanser[i % len(nyanser)],
+            label=f"{a} år",
+        )
+
+    ax.set_ylabel("Modellen minus fasit (pp per år)")
+    ax.set_title("Når bommet modellen, og hvor mye?")
+    ax.legend(frameon=False, fontsize=9, ncol=len(aarene))
+    ax.margins(x=0.01)
+    fig.savefig(fil)
+    plt.close(fig)
 
 
 def tilbaketest(indeks: pd.Series) -> pd.DataFrame:
@@ -597,7 +740,7 @@ def tilbaketest(indeks: pd.Series) -> pd.DataFrame:
         if len(historikk) < 120:
             continue
 
-            # Modellen får bare se data som fantes på dette tidspunktet.
+        # Modellen får bare se data som fantes på dette tidspunktet.
         try:
             m = Modell(historikk, est_fra=C.ESTIMERING_FRA)
         except Exception:
@@ -628,14 +771,15 @@ def tilbaketest(indeks: pd.Series) -> pd.DataFrame:
                 }
             )
 
-        if (n + 1) % 10 == 0:
+        if (n + 1) % max(1, len(punkter) // 8) == 0:
             logg(f"    {n + 1}/{len(punkter)} ...")
 
     return pd.DataFrame(rader)
 
-    # ===========================================================================
-    # 6. HISTORIKK
-    # ===========================================================================
+
+# ===========================================================================
+# 6. HISTORIKK
+# ===========================================================================
 
 
 def oppdater_historikk(indeks: pd.Series, rader: list[dict]) -> pd.DataFrame | None:
@@ -675,9 +819,10 @@ def finn_endringer(tidligere: pd.DataFrame | None, rader: list[dict]) -> dict[in
             ut[r["horisont_ar"]] = r["median"] - float(treff["median"].iloc[0])
     return ut
 
-    # ===========================================================================
-    # 7. RAPPORT
-    # ===========================================================================
+
+# ===========================================================================
+# 7. RAPPORT
+# ===========================================================================
 
 
 STIL = """
@@ -792,20 +937,41 @@ def lag_rapport(indeks, m, rader, endringer, tb, fil):
     if tb is not None and not tb.empty:
         d80 = 100 * tb["innenfor80"].mean()
         vinn = 100 * (tb["feil_modell"].abs() < tb["feil_naiv"].abs()).mean()
+        antall_aar = len(indeks) // 12
         tb_html = f"""
-  <h2>Tilbaketest</h2>
-  <p>Modellen er kjørt på nytt {tb['startpunkt'].nunique()} ganger med startpunkt
-     spredt gjennom historien, som om den sto der og ikke visste noe om
-     fortsettelsen. Fasiten er hva som faktisk skjedde.</p>
-  <p>Det faktiske utfallet havnet innenfor 80 %-intervallet i
-     <strong>{d80:.0f} %</strong> av tilfellene. Ligger dette langt under 80,
-     er intervallene for smale og du bor øke <code>ANKER_USIKKERHET</code>.
-     Modellen slo den naive regelen &laquo;siste års vekst fortsetter&raquo; i
-     <strong>{vinn:.0f} %</strong> av tilfellene.</p>
-  <figure><img src="tilbaketest.png" alt="Tilbaketest">
-  <figcaption>Venstre: hvor ofte fasiten havnet innenfor intervallet, mot målet
-  på 80 prosent. Høyre: gjennomsnittlig bomskudd i prosentpoeng, modell mot
-  naiv regel. Lavere er bedre.</figcaption></figure>"""
+  <h2>Ville modellen ha truffet?</h2>
+  <p>Den beste prøven på en prognosemodell er å stille den opp i fortiden med
+     bind for øynene. I panelene under får modellen bare se data til og med den
+     stiplede streken, og lager så en prognose {C.TILBAKETEST_VIS_AAR} år frem.
+     Den mørke linjen er hva som faktisk skjedde.</p>
+  <figure><img src="tilbaketest_bane.png" alt="Historiske prognoser mot fasit">
+  <figcaption>Mørk linje er faktisk indeks, blå linje er modellens median, og de
+  blå feltene er usikkerhetsspennet. Ringen markerer hvor fasiten landet etter
+  {C.TILBAKETEST_VIS_AAR} år: mørk ring betyr innenfor 80 %-intervallet, brun
+  ring betyr utenfor.</figcaption></figure>
+
+  <h2>Tallene bak</h2>
+  <p>Modellen er kjørt på nytt fra {tb['startpunkt'].nunique()} startpunkter
+     gjennom historien. Det faktiske utfallet havnet innenfor 80 %-intervallet i
+     <strong>{d80:.0f} %</strong> av tilfellene, og modellen slo den naive regelen
+     &laquo;siste års vekst fortsetter&raquo; i <strong>{vinn:.0f} %</strong>.</p>
+  <div class="merk">
+  Ikke les for mye ut av disse prosentene. Startpunktene ligger én måned fra
+  hverandre, så nabovinduer deler nesten hele perioden og teller i praksis som
+  én observasjon. Det bindende taket er hvor mange ikke-overlappende år serien
+  inneholder — rundt {antall_aar} for ettårsanslaget, og bare en håndfull for
+  tiårsanslaget. Et dekningstall på 89 i stedet for 80 ligger godt innenfor det
+  tilfeldigheter kan forklare.
+  </div>
+  <figure><img src="tilbaketest_feil.png" alt="Bommen over tid">
+  <figcaption>Over null betyr at modellen anslo for høyt. Klumper feilene seg
+  rundt enkeltepisoder, er det konjunkturer modellen ikke kunne vite om. Ligger
+  de skjevt over lange perioder, er det noe mer systematisk.</figcaption></figure>
+  <figure><img src="tilbaketest.png" alt="Tilbaketest oppsummert">
+  <figcaption>Venstre: hvor ofte fasiten havnet innenfor intervallet, mot målet på
+  80 prosent. Høyre: gjennomsnittlig bomskudd, modell mot naiv regel. Søylene kan
+  ikke sammenlignes på tvers av horisonter — en tiårssnittvekst svinger naturlig
+  mindre enn en ettårsvekst, så målskiven er større.</figcaption></figure>"""
     else:
         tb_html = ""
 
@@ -894,9 +1060,10 @@ Siden bygges automatisk hver måned. {C.KONTAKT}
     with open(fil, "w", encoding="utf-8") as f:
         f.write(html)
 
-        # ===========================================================================
-        # 8. HOVEDPROGRAM
-        # ===========================================================================
+
+# ===========================================================================
+# 8. HOVEDPROGRAM
+# ===========================================================================
 
 
 def main() -> int:
@@ -942,9 +1109,13 @@ def main() -> int:
     tb = None
     if C.KJOR_TILBAKETEST:
         logg("\n  Tilbaketest")
+        serier = tilbaketest_baner(indeks)
+        graf_tilbaketest_bane(indeks, serier, f"{UT}/tilbaketest_bane.png")
+
         tb = tilbaketest(indeks)
         if not tb.empty:
             tb.to_csv(f"{DATA}/tilbaketest.csv", index=False)
+            graf_tilbaketest_feil(tb, f"{UT}/tilbaketest_feil.png")
             graf_tilbaketest(tb, f"{UT}/tilbaketest.png")
             logg(f"  Dekning 80 %-intervall: {100 *tb['innenfor80'].mean():.0f} %")
 

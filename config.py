@@ -110,11 +110,22 @@ KJOR_TILBAKETEST = True
 # lager prognose, og sammenligner med hva som faktisk skjedde.
 TILBAKETEST_FRA = "1995M01"
 
-# Hvor ofte vi setter et nytt startpunkt (i måneder). 6 = to ganger i året.
-TILBAKETEST_STEG = 6
+# Hvor ofte vi setter et nytt startpunkt (i måneder). 1 = hver eneste måned.
+#
+# Tettere sampling gir et roligere og mer presist anslag på treffsikkerheten,
+# men den tilfører ikke ny informasjon: to nabovinduer deler elleve av tolv
+# måneder. Det bindende taket er hvor mange ikke-overlappende år serien
+# faktisk inneholder, ikke hvor tett du måler.
+TILBAKETEST_STEG = 1
 
 # Færre baner i tilbaketesten for å holde kjøretiden nede.
 TILBAKETEST_BANER = 1500
+
+# Hvor mange år frem de historiske prognosene i hovedgrafen skal vises.
+TILBAKETEST_VIS_AAR = 5
+
+# Hvor mange slike historiske prognoser som tegnes (ett panel hver).
+TILBAKETEST_VIS_ANTALL = 4
 
 
 # ---------------------------------------------------------------------------
