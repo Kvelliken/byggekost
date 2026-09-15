@@ -1,0 +1,51 @@
+name: Månedlig kjøring
+
+# Når jobben skal gå:
+on:
+  # Den 16. hver måned kl. 06:00 UTC = 08:00 norsk sommertid.
+  # SSB publiserer rundt den 10.-14., så vi har god margin.
+  # Tidspunktet er alltid UTC - GitHub bryr seg ikke om norsk tid.
+  schedule:
+    - cron: "0 6 16 * *"
+
+  # Lar deg trykke "Run workflow" selv, når som helst.
+  # IKKE fjern denne. GitHub slår av planlagte kjøringer hvis
+  # repoet ligger helt urørt i 60 dager, og en manuell kjøring
+  # teller som aktivitet.
+  workflow_dispatch:
+
+# Jobben må få lov til å skrive tilbake til repoet.
+permissions:
+  contents: write
+
+jobs:
+  kjor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Hent koden
+        uses: actions/checkout@v4
+
+      - name: Sett opp Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer pakker
+        run: pip install -r requirements.txt
+
+      - name: Kjør modellen
+        run: python modell.py
+
+      - name: Lagre resultatet
+        run: |
+          git config user.name "byggekost-bot"
+          git config user.email "actions@github.com"
+          git add docs data
+          if git diff --staged --quiet; then
+            echo "Ingenting nytt - SSB har ikke publisert nye tall siden sist."
+          else
+            git commit -m "Oppdatert $(date +'%Y-%m-%d')"
+            git push
+          fi
