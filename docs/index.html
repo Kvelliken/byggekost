@@ -61,7 +61,7 @@ a{color:var(--dyp)}
         <div class="spenn">80 %: 2,7 – 6,3 %</div>
         <div class="bar"><i style="left:43.6%;width:48.4%"></i>
                          <b style="left:62.3%"></b></div>
-        <div class="delta">første kjøring</div>
+        <div class="delta">uendret siden forrige måned</div>
       </div>
       <div class="rute">
         <div class="horisont">Neste 3 år</div>
@@ -69,7 +69,7 @@ a{color:var(--dyp)}
         <div class="spenn">80 %: 2,6 – 5,6 %</div>
         <div class="bar"><i style="left:47.8%;width:43.4%"></i>
                          <b style="left:65.2%"></b></div>
-        <div class="delta">første kjøring</div>
+        <div class="delta">uendret siden forrige måned</div>
       </div>
       <div class="rute">
         <div class="horisont">Neste 5 år</div>
@@ -77,7 +77,7 @@ a{color:var(--dyp)}
         <div class="spenn">80 %: 2,7 – 5,2 %</div>
         <div class="bar"><i style="left:50.8%;width:39.9%"></i>
                          <b style="left:68.2%"></b></div>
-        <div class="delta">første kjøring</div>
+        <div class="delta">uendret siden forrige måned</div>
       </div>
       <div class="rute">
         <div class="horisont">Neste 10 år</div>
@@ -85,7 +85,7 @@ a{color:var(--dyp)}
         <div class="spenn">80 %: 2,8 – 4,8 %</div>
         <div class="bar"><i style="left:56.7%;width:33.3%"></i>
                          <b style="left:72.2%"></b></div>
-        <div class="delta">første kjøring</div>
+        <div class="delta">uendret siden forrige måned</div>
       </div></div>
 <p class="stempel">Midttallet er medianen. Stolpen viser 80 prosent-intervallet:
    ett av ti utfall havner under, ett av ti over.</p>
@@ -120,19 +120,39 @@ symmetrisk fordeling.</p>
 banene trekker mot det langsiktige ankeret etter hvert som dagens
 konjunktursituasjon mister betydning.</figcaption></figure>
 
-  <h2>Tilbaketest</h2>
-  <p>Modellen er kjørt på nytt 62 ganger med startpunkt
-     spredt gjennom historien, som om den sto der og ikke visste noe om
-     fortsettelsen. Fasiten er hva som faktisk skjedde.</p>
-  <p>Det faktiske utfallet havnet innenfor 80 %-intervallet i
-     <strong>85 %</strong> av tilfellene. Ligger dette langt under 80,
-     er intervallene for smale og du bor øke <code>ANKER_USIKKERHET</code>.
-     Modellen slo den naive regelen &laquo;siste års vekst fortsetter&raquo; i
-     <strong>64 %</strong> av tilfellene.</p>
-  <figure><img src="tilbaketest.png" alt="Tilbaketest">
-  <figcaption>Venstre: hvor ofte fasiten havnet innenfor intervallet, mot målet
-  på 80 prosent. Høyre: gjennomsnittlig bomskudd i prosentpoeng, modell mot
-  naiv regel. Lavere er bedre.</figcaption></figure>
+  <h2>Ville modellen ha truffet?</h2>
+  <p>Den beste prøven på en prognosemodell er å stille den opp i fortiden med
+     bind for øynene. I panelene under får modellen bare se data til og med den
+     stiplede streken, og lager så en prognose 5 år frem.
+     Den mørke linjen er hva som faktisk skjedde.</p>
+  <figure><img src="tilbaketest_bane.png" alt="Historiske prognoser mot fasit">
+  <figcaption>Mørk linje er faktisk indeks, blå linje er modellens median, og de
+  blå feltene er usikkerhetsspennet. Ringen markerer hvor fasiten landet etter
+  5 år: mørk ring betyr innenfor 80 %-intervallet, brun
+  ring betyr utenfor.</figcaption></figure>
+
+  <h2>Tallene bak</h2>
+  <p>Modellen er kjørt på nytt fra 368 startpunkter
+     gjennom historien. Det faktiske utfallet havnet innenfor 80 %-intervallet i
+     <strong>84 %</strong> av tilfellene, og modellen slo den naive regelen
+     &laquo;siste års vekst fortsetter&raquo; i <strong>62 %</strong>.</p>
+  <div class="merk">
+  Ikke les for mye ut av disse prosentene. Startpunktene ligger én måned fra
+  hverandre, så nabovinduer deler nesten hele perioden og teller i praksis som
+  én observasjon. Det bindende taket er hvor mange ikke-overlappende år serien
+  inneholder — rundt 48 for ettårsanslaget, og bare en håndfull for
+  tiårsanslaget. Et dekningstall på 89 i stedet for 80 ligger godt innenfor det
+  tilfeldigheter kan forklare.
+  </div>
+  <figure><img src="tilbaketest_feil.png" alt="Bommen over tid">
+  <figcaption>Over null betyr at modellen anslo for høyt. Klumper feilene seg
+  rundt enkeltepisoder, er det konjunkturer modellen ikke kunne vite om. Ligger
+  de skjevt over lange perioder, er det noe mer systematisk.</figcaption></figure>
+  <figure><img src="tilbaketest.png" alt="Tilbaketest oppsummert">
+  <figcaption>Venstre: hvor ofte fasiten havnet innenfor intervallet, mot målet på
+  80 prosent. Høyre: gjennomsnittlig bomskudd, modell mot naiv regel. Søylene kan
+  ikke sammenlignes på tvers av horisonter — en tiårssnittvekst svinger naturlig
+  mindre enn en ettårsvekst, så målskiven er større.</figcaption></figure>
 
 <h2>Om modellen</h2>
 <div class="merk">
