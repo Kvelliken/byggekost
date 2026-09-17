@@ -5,7 +5,7 @@ boligblokk (tabell 08655), for 1, 3, 5 og 10 år frem, med usikkerhetsspenn.
 
 Kjører automatisk den 16. hver måned og publiserer resultatet som en nettside.
 
-**Resultatside:** https://DITTBRUKERNAVN.github.io/byggekost/
+**Resultatside:** https://Kvelliken.github.io/byggekost/
 *(bytt ut DITTBRUKERNAVN etter at du har satt opp GitHub Pages)*
 
 ## Filer
