@@ -33,18 +33,30 @@ jobs:
           cache: pip
 
       - name: Installer pakker
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest
+
+      # Stopper kjøringen hvis en endring i koden har ødelagt noe,
+      # før det rekker å havne på nettsiden.
+      - name: Kjør tester
+        run: python -m pytest -q
 
       - name: Kjør modellen
         run: python modell.py
 
       - name: Lagre resultatet
         run: |
+          # Planlagt kjøring uten nye tall fra SSB: ikke lagre noe, slik at
+          # siden ikke får ny dato uten nytt innhold. En manuell kjøring
+          # lagrer alltid, fordi den som regel skyldes en endring i koden.
+          if [ "${{ github.event_name }}" = "schedule" ] && git diff --quiet -- data/indeks_siste.csv; then
+            echo "Ingenting nytt - SSB har ikke publisert nye tall siden sist."
+            exit 0
+          fi
           git config user.name "byggekost-bot"
           git config user.email "actions@github.com"
           git add docs data
           if git diff --staged --quiet; then
-            echo "Ingenting nytt - SSB har ikke publisert nye tall siden sist."
+            echo "Ingen endringer å lagre."
           else
             git commit -m "Oppdatert $(date +'%Y-%m-%d')"
             git push
