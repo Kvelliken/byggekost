@@ -1,3 +1,6 @@
+> **Flyttet.** Modellen ligger nå i mappen `byggekost/` i [Kvelliken/fdv](https://github.com/Kvelliken/fdv/tree/main/byggekost), med hele historikken.
+> Ny resultatside: https://kvelliken.github.io/fdv/byggekost/. Dette repoet oppdateres ikke lenger.
+
 # Byggekostnadsmodell — boligblokk
 
 Estimerer forventet gjennomsnittlig årlig vekst i SSBs byggekostnadsindeks for
